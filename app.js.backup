@@ -1,0 +1,606 @@
+// ===== CONFIGURACIÓN =====
+// Inicializar cliente de Supabase
+const supabaseUrl = 'https://rirqknkkmvllhdhajzbf.supabase.co';
+const supabaseKey = 'sb_publishable_t-D3Lreah_7GFOAjwobUpw_xKMFIO3v';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+const CONFIG = {
+    adminCredentials: {
+        username: 'admin',
+        password: 'admin123' // CAMBIAR EN PRODUCCIÓN
+    }
+};
+
+// ===== ESTADO GLOBAL =====
+let currentTeamCode = '';
+let playersData = [];
+let allTeamsData = [];
+
+// ===== ELEMENTOS DOM =====
+const views = {
+    access: document.getElementById('accessView'),
+    captain: document.getElementById('captainView'),
+    admin: document.getElementById('adminView')
+};
+
+const elements = {
+    // Access View
+    teamCodeInput: document.getElementById('teamCode'),
+    accessBtn: document.getElementById('accessBtn'),
+    accessError: document.getElementById('accessError'),
+
+    // Captain View
+    teamTitle: document.getElementById('teamTitle'),
+    teamNameInput: document.getElementById('teamName'),
+    categorySelect: document.getElementById('category'),
+    playersContainer: document.getElementById('playersContainer'),
+    addPlayerBtn: document.getElementById('addPlayerBtn'),
+    saveProgressBtn: document.getElementById('saveProgressBtn'),
+    submitBtn: document.getElementById('submitBtn'),
+    logoutBtn: document.getElementById('logoutBtn'),
+    progressFill: document.getElementById('progressFill'),
+    progressPercent: document.getElementById('progressPercent'),
+    formMessage: document.getElementById('formMessage'),
+
+    // Admin View
+    totalTeams: document.getElementById('totalTeams'),
+    totalPlayers: document.getElementById('totalPlayers'),
+    totalAllergies: document.getElementById('totalAllergies'),
+    teamsTableBody: document.getElementById('teamsTableBody'),
+    adminLogoutBtn: document.getElementById('adminLogoutBtn'),
+
+    // Modal
+    teamDetailModal: document.getElementById('teamDetailModal'),
+    modalTeamName: document.getElementById('modalTeamName'),
+    modalPlayersContent: document.getElementById('modalPlayersContent'),
+    closeModal: document.getElementById('closeModal')
+};
+
+// ===== NAVEGACIÓN ENTRE VISTAS =====
+function showView(viewName) {
+    Object.values(views).forEach(view => view.classList.remove('active'));
+    views[viewName].classList.add('active');
+}
+
+// ===== FUNCIONES DE API =====
+async function fetchTeamData(teamCode) {
+    try {
+        // Buscar equipo por código (usando email del capitán como código)
+        const { data: team, error } = await supabase
+            .from('teams')
+            .select('*')
+            .eq('captain_email', teamCode)
+            .single();
+
+        if (error || !team) {
+            throw new Error('Código no encontrado');
+        }
+
+        // Obtener jugadores del equipo
+        const { data: players } = await supabase
+            .from('players')
+            .select('*')
+            .eq('team_id', team.id);
+
+        return {
+            team,
+            players: players || []
+        };
+    } catch (error) {
+        console.error('Error fetching team data:', error);
+        throw error;
+    }
+}
+
+async function saveRegistration(data, isComplete = false) {
+    try {
+        // Primero, verificar si el equipo ya existe
+        const { data: existingTeam } = await supabase
+            .from('teams')
+            .select('id')
+            .eq('captain_email', currentTeamCode)
+            .single();
+
+        let teamId;
+
+        if (existingTeam) {
+            // Actualizar equipo existente
+            const { data: updatedTeam, error: updateError } = await supabase
+                .from('teams')
+                .update({
+                    team_name: data.teamName,
+                    registration_status: isComplete ? 'complete' : 'incomplete',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', existingTeam.id)
+                .select()
+                .single();
+
+            if (updateError) throw updateError;
+            teamId = updatedTeam.id;
+
+            // Eliminar jugadores existentes para reemplazarlos
+            await supabase
+                .from('players')
+                .delete()
+                .eq('team_id', teamId);
+        } else {
+            // Crear nuevo equipo
+            const { data: newTeam, error: insertError } = await supabase
+                .from('teams')
+                .insert({
+                    team_name: data.teamName,
+                    captain_email: currentTeamCode,
+                    captain_name: data.teamName, // Temporal, se puede mejorar
+                    captain_phone: '000000000', // Temporal, se puede mejorar
+                    registration_status: isComplete ? 'complete' : 'incomplete'
+                })
+                .select()
+                .single();
+
+            if (insertError) throw insertError;
+            teamId = newTeam.id;
+        }
+
+        // Insertar jugadores
+        if (data.players.length > 0) {
+            const playersToInsert = data.players.map((player, index) => ({
+                team_id: teamId,
+                full_name: player.nombre,
+                dni: player.dni,
+                birth_date: player.fecha_nacimiento,
+                phone: '000000000', // Temporal
+                email: `${player.dni}@temp.com`, // Temporal
+                player_number: index + 1,
+                is_substitute: false
+            }));
+
+            const { error: playersError } = await supabase
+                .from('players')
+                .insert(playersToInsert);
+
+            if (playersError) throw playersError;
+        }
+
+        return { success: true, teamId };
+    } catch (error) {
+        console.error('Error saving registration:', error);
+        throw error;
+    }
+}
+
+// ===== GESTIÓN DE JUGADORES =====
+function createPlayerCard(index) {
+    const playerCard = document.createElement('div');
+    playerCard.className = 'player-card';
+    playerCard.dataset.index = index;
+
+    playerCard.innerHTML = `
+        <div class="player-header">
+            <span class="player-number">Jugador #${index + 1}</span>
+            <button class="btn btn-danger btn-sm" onclick="removePlayer(${index})">Eliminar</button>
+        </div>
+        
+        <div class="form-group">
+            <label>Nombre Completo *</label>
+            <input type="text" class="input-field player-name" placeholder="Juan Pérez" required>
+        </div>
+        
+        <div class="form-group">
+            <label>DNI *</label>
+            <input type="text" class="input-field player-dni" placeholder="12345678A" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Fecha de Nacimiento *</label>
+            <input type="date" class="input-field player-birthdate" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Alergias Alimenticias</label>
+            <textarea class="input-field player-allergies" placeholder="Lactosa, gluten..." rows="2"></textarea>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="consent-${index}" class="player-consent">
+            <label for="consent-${index}">Acepto la cesión de imagen *</label>
+        </div>
+    `;
+
+    return playerCard;
+}
+
+function addPlayer() {
+    const index = playersData.length;
+    playersData.push({});
+
+    const playerCard = createPlayerCard(index);
+    elements.playersContainer.appendChild(playerCard);
+
+    // Añadir listeners para actualizar progreso
+    playerCard.querySelectorAll('input, textarea, select').forEach(input => {
+        input.addEventListener('input', updateProgress);
+    });
+
+    updateProgress();
+}
+
+function removePlayer(index) {
+    const playerCards = elements.playersContainer.querySelectorAll('.player-card');
+    playerCards[index].remove();
+    playersData.splice(index, 1);
+
+    // Reindexar
+    elements.playersContainer.innerHTML = '';
+    playersData.forEach((_, i) => {
+        const card = createPlayerCard(i);
+        elements.playersContainer.appendChild(card);
+    });
+
+    updateProgress();
+}
+
+// ===== CÁLCULO DE PROGRESO =====
+function updateProgress() {
+    const totalFields = 2; // Nombre equipo + categoría
+    let filledFields = 0;
+
+    // Campos del equipo
+    if (elements.teamNameInput.value.trim()) filledFields++;
+    if (elements.categorySelect.value) filledFields++;
+
+    // Campos de jugadores
+    const playerCards = elements.playersContainer.querySelectorAll('.player-card');
+    const playerFieldsPerPlayer = 5; // nombre, dni, birthdate, consent (obligatorios) + alergias (opcional)
+
+    playerCards.forEach(card => {
+        let playerFields = 0;
+        if (card.querySelector('.player-name').value.trim()) playerFields++;
+        if (card.querySelector('.player-dni').value.trim()) playerFields++;
+        if (card.querySelector('.player-birthdate').value) playerFields++;
+        if (card.querySelector('.player-consent').checked) playerFields++;
+
+        filledFields += (playerFields / 4); // Solo obligatorios cuentan
+    });
+
+    const totalPossible = totalFields + (playerCards.length * 1);
+    const percentage = totalPossible > 0 ? Math.round((filledFields / totalPossible) * 100) : 0;
+
+    elements.progressFill.style.width = `${percentage}%`;
+    elements.progressPercent.textContent = percentage;
+}
+
+// ===== RECOPILAR DATOS DEL FORMULARIO =====
+function collectFormData() {
+    const players = [];
+    const playerCards = elements.playersContainer.querySelectorAll('.player-card');
+
+    playerCards.forEach(card => {
+        players.push({
+            nombre: card.querySelector('.player-name').value.trim(),
+            dni: card.querySelector('.player-dni').value.trim(),
+            fecha_nacimiento: card.querySelector('.player-birthdate').value,
+            alergias: card.querySelector('.player-allergies').value.trim(),
+            cesion_imagen_ok: card.querySelector('.player-consent').checked
+        });
+    });
+
+    return {
+        teamName: elements.teamNameInput.value.trim(),
+        category: elements.categorySelect.value,
+        players
+    };
+}
+
+// ===== VALIDACIÓN =====
+function validateForm(data, isComplete = false) {
+    const errors = [];
+
+    if (!data.teamName) errors.push('El nombre del equipo es obligatorio');
+    if (!data.category) errors.push('La categoría es obligatoria');
+
+    if (isComplete && data.players.length === 0) {
+        errors.push('Debes añadir al menos un jugador');
+    }
+
+    data.players.forEach((player, index) => {
+        if (!player.nombre) errors.push(`Jugador #${index + 1}: Falta el nombre`);
+        if (!player.dni) errors.push(`Jugador #${index + 1}: Falta el DNI`);
+        if (!player.fecha_nacimiento) errors.push(`Jugador #${index + 1}: Falta la fecha de nacimiento`);
+        if (isComplete && !player.cesion_imagen_ok) {
+            errors.push(`Jugador #${index + 1}: Debe aceptar la cesión de imagen`);
+        }
+    });
+
+    return errors;
+}
+
+// ===== MOSTRAR MENSAJES =====
+function showMessage(message, isError = false) {
+    elements.formMessage.textContent = message;
+    elements.formMessage.className = isError ? 'error-message' : 'message success';
+    elements.formMessage.classList.remove('hidden');
+
+    setTimeout(() => {
+        elements.formMessage.classList.add('hidden');
+    }, 5000);
+}
+
+// ===== EVENT LISTENERS =====
+
+// Acceso con código
+elements.accessBtn.addEventListener('click', async () => {
+    const code = elements.teamCodeInput.value.trim();
+
+    if (!code) {
+        elements.accessError.textContent = 'Por favor, ingresa un código';
+        elements.accessError.classList.remove('hidden');
+        return;
+    }
+
+    // Ocultar error previo
+    elements.accessError.classList.add('hidden');
+
+    try {
+        elements.accessBtn.textContent = 'Cargando...';
+        elements.accessBtn.disabled = true;
+
+        console.log('🔍 Intentando acceder con código:', code);
+        console.log('🔌 Cliente Supabase:', supabase ? 'Inicializado' : 'NO INICIALIZADO');
+
+        // Intentar cargar datos del equipo desde Supabase
+        try {
+            console.log('📡 Consultando Supabase...');
+            const teamData = await fetchTeamData(code);
+            console.log('✅ Datos encontrados:', teamData);
+
+            currentTeamCode = code;
+
+            // Cargar datos del equipo
+            if (teamData.team) {
+                elements.teamNameInput.value = teamData.team.team_name || '';
+                elements.categorySelect.value = teamData.team.category || '';
+            }
+
+            // Cargar jugadores existentes
+            if (teamData.players && teamData.players.length > 0) {
+                teamData.players.forEach(player => {
+                    addPlayer();
+                    const lastCard = elements.playersContainer.lastElementChild;
+                    lastCard.querySelector('.player-name').value = player.full_name || '';
+                    lastCard.querySelector('.player-dni').value = player.dni || '';
+                    lastCard.querySelector('.player-birthdate').value = player.birth_date || '';
+                });
+            }
+
+            elements.teamTitle.textContent = `Equipo: ${teamData.team.team_name || code}`;
+
+        } catch (error) {
+            // Si no existe, crear nuevo equipo
+            console.log('ℹ️ Equipo no encontrado, creando nuevo:', error.message);
+            currentTeamCode = code;
+            elements.teamTitle.textContent = `Nuevo Equipo: ${code}`;
+        }
+
+        showView('captain');
+        updateProgress();
+
+    } catch (error) {
+        console.error('❌ Error crítico:', error);
+        elements.accessError.textContent = 'Error al cargar. Revisa la consola (F12) para más detalles.';
+        elements.accessError.classList.remove('hidden');
+    } finally {
+        elements.accessBtn.textContent = 'Acceder';
+        elements.accessBtn.disabled = false;
+    }
+});
+
+// Añadir jugador
+elements.addPlayerBtn.addEventListener('click', addPlayer);
+
+// Guardar progreso
+elements.saveProgressBtn.addEventListener('click', async () => {
+    const data = collectFormData();
+    const errors = validateForm(data, false);
+
+    if (errors.length > 0) {
+        showMessage(errors[0], true);
+        return;
+    }
+
+    try {
+        elements.saveProgressBtn.textContent = 'Guardando...';
+        elements.saveProgressBtn.disabled = true;
+
+        await saveRegistration(data, false);
+        showMessage('✅ Progreso guardado correctamente');
+
+    } catch (error) {
+        showMessage('Error al guardar. Intenta de nuevo.', true);
+    } finally {
+        elements.saveProgressBtn.textContent = '💾 Guardar Progreso';
+        elements.saveProgressBtn.disabled = false;
+    }
+});
+
+// Finalizar inscripción
+elements.submitBtn.addEventListener('click', async () => {
+    const data = collectFormData();
+    const errors = validateForm(data, true);
+
+    if (errors.length > 0) {
+        showMessage(errors.join('\n'), true);
+        return;
+    }
+
+    try {
+        elements.submitBtn.textContent = 'Finalizando...';
+        elements.submitBtn.disabled = true;
+
+        await saveRegistration(data, true);
+        showMessage('🎉 ¡Inscripción completada con éxito!');
+
+        setTimeout(() => {
+            showView('access');
+            resetForm();
+        }, 2000);
+
+    } catch (error) {
+        showMessage('Error al finalizar. Intenta de nuevo.', true);
+    } finally {
+        elements.submitBtn.textContent = '✅ Finalizar Inscripción';
+        elements.submitBtn.disabled = false;
+    }
+});
+
+// Logout
+elements.logoutBtn.addEventListener('click', () => {
+    if (confirm('¿Seguro que quieres salir? Asegúrate de guardar tu progreso.')) {
+        showView('access');
+        resetForm();
+    }
+});
+
+// Admin logout
+elements.adminLogoutBtn.addEventListener('click', () => {
+    showView('access');
+});
+
+// Cerrar modal
+elements.closeModal.addEventListener('click', () => {
+    elements.teamDetailModal.classList.add('hidden');
+});
+
+// ===== FUNCIONES AUXILIARES =====
+function resetForm() {
+    elements.teamNameInput.value = '';
+    elements.categorySelect.value = '';
+    elements.playersContainer.innerHTML = '';
+    playersData = [];
+    currentTeamCode = '';
+    updateProgress();
+}
+
+// ===== DASHBOARD ADMIN =====
+async function loadAdminDashboard() {
+    try {
+        // Obtener todos los equipos
+        const { data: teams, error: teamsError } = await supabase
+            .from('teams')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (teamsError) throw teamsError;
+
+        // Obtener todos los jugadores
+        const { data: allPlayers, error: playersError } = await supabase
+            .from('players')
+            .select('*');
+
+        if (playersError) throw playersError;
+
+        // Calcular KPIs
+        const totalTeams = teams?.length || 0;
+        const totalPlayers = allPlayers?.length || 0;
+
+        // Actualizar KPIs en el DOM
+        elements.totalTeams.textContent = totalTeams;
+        elements.totalPlayers.textContent = totalPlayers;
+        elements.totalAllergies.textContent = 0; // Por ahora, ya que no tenemos campo de alergias
+
+        // Construir tabla de equipos
+        if (teams && teams.length > 0) {
+            const teamsWithPlayerCount = teams.map(team => {
+                const playerCount = allPlayers?.filter(p => p.team_id === team.id).length || 0;
+                return { ...team, playerCount };
+            });
+
+            elements.teamsTableBody.innerHTML = teamsWithPlayerCount.map(team => `
+                <tr>
+                    <td>${team.team_name}</td>
+                    <td>${team.captain_email}</td>
+                    <td>-</td>
+                    <td>${team.playerCount}</td>
+                    <td>
+                        <span class="status-badge ${team.registration_status === 'complete' ? 'completed' : 'pending'}">
+                            ${team.registration_status === 'complete' ? 'Completado' : 'Pendiente'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick="viewTeamDetail('${team.id}')">
+                            Ver Detalle
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            elements.teamsTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No hay equipos registrados</td></tr>';
+        }
+
+    } catch (error) {
+        console.error('Error loading admin dashboard:', error);
+        elements.teamsTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Error al cargar datos</td></tr>';
+    }
+}
+
+async function viewTeamDetail(teamId) {
+    try {
+        // Obtener datos del equipo
+        const { data: team, error: teamError } = await supabase
+            .from('teams')
+            .select('*')
+            .eq('id', teamId)
+            .single();
+
+        if (teamError) throw teamError;
+
+        // Obtener jugadores del equipo
+        const { data: players, error: playersError } = await supabase
+            .from('players')
+            .select('*')
+            .eq('team_id', teamId);
+
+        if (playersError) throw playersError;
+
+        // Actualizar modal
+        elements.modalTeamName.textContent = `Equipo: ${team.team_name}`;
+
+        if (players && players.length > 0) {
+            elements.modalPlayersContent.innerHTML = players.map((player, index) => `
+                <div class="player-detail">
+                    <strong>Jugador ${index + 1}:</strong> ${player.full_name}<br>
+                    <strong>DNI:</strong> ${player.dni}<br>
+                    <strong>Fecha Nac.:</strong> ${player.birth_date}<br>
+                </div>
+            `).join('');
+        } else {
+            elements.modalPlayersContent.innerHTML = '<p>No hay jugadores registrados</p>';
+        }
+
+        elements.teamDetailModal.classList.remove('hidden');
+
+    } catch (error) {
+        console.error('Error loading team detail:', error);
+        elements.modalTeamName.textContent = 'Error al cargar equipo';
+        elements.modalPlayersContent.innerHTML = '<p style="color: red;">Error al cargar los datos</p>';
+        elements.teamDetailModal.classList.remove('hidden');
+    }
+}
+
+// ===== INICIALIZACIÓN =====
+document.addEventListener('DOMContentLoaded', () => {
+    // Listeners para actualizar progreso
+    elements.teamNameInput.addEventListener('input', updateProgress);
+    elements.categorySelect.addEventListener('change', updateProgress);
+
+    // Verificar si hay acceso admin (simulado)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('admin') === 'true') {
+        showView('admin');
+        loadAdminDashboard();
+    }
+});
+
+// ===== EXPONER FUNCIONES GLOBALES =====
+window.removePlayer = removePlayer;
+window.viewTeamDetail = viewTeamDetail;

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscripción Torneo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=2">
+    <script src="supabase.js"></script>
+</head>
+
+<body>
+    <!-- Vista de Código de Acceso -->
+    <div id="accessView" class="view active">
+        <div class="container">
+            <div class="card glass-card">
+                <div style="font-weight: 700; color: var(--secondary); margin-bottom: 0.2rem; letter-spacing: 1.5px; font-size: 1.1rem; text-transform: uppercase;">Fundación Real Madrid</div>
+                <h1>🏆 Portal Inscripción Jornada Convivencia Mecenas</h1>
+                <p class="subtitle">Ingresa tu código de equipo para continuar</p>
+
+                <div class="form-group">
+                    <label for="teamCode">Código de Equipo</label>
+                    <input type="text" id="teamCode" placeholder="Ej: ABC123" class="input-field">
+                </div>
+
+                <button id="accessBtn" class="btn btn-primary">
+                    Acceder
+                </button>
+
+                <div id="accessError" class="error-message hidden"></div>
+            </div>
+
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <a href="ayuda.html" target="_blank" class="btn btn-accent" style="text-decoration: none; display: inline-block; margin-bottom: 1rem; width: 100%; max-width: 400px;">
+                    ❓ Ver Guía de Ayuda e Instrucciones
+                </a>
+                <br>
+                <a href="reglamento.html" target="_blank" class="btn btn-secondary" style="text-decoration: none; display: inline-block; margin-bottom: 1rem; width: 100%; max-width: 400px; box-sizing: border-box; text-align: center;">
+                    📜 Reglamento
+                </a>
+                <br>
+                <button id="showAdminLoginBtn" class="btn btn-secondary btn-sm"
+                    style="font-size: 0.8rem; opacity: 0.7; margin-top: 1rem;">
+                    🔒 Acceso Administración
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vista de Login Admin -->
+    <div id="adminLoginView" class="view">
+        <div class="container">
+            <div class="card glass-card" style="max-width: 400px; margin: 0 auto;">
+                <h2>🔐 Acceso Administrativo</h2>
+                <p class="subtitle">Solo personal autorizado</p>
+
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input type="text" id="adminUser" class="input-field" placeholder="admin">
+                </div>
+
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="adminPass" class="input-field" placeholder="••••••">
+                </div>
+
+                <button id="adminLoginBtn" class="btn btn-primary" style="width: 100%;">
+                    Entrar al Dashboard
+                </button>
+
+                <button id="backToAccessBtn" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">
+                    Volver
+                </button>
+
+                <div id="adminLoginError" class="error-message hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vista de Capitán (Formulario de Registro) -->
+    <div id="captainView" class="view">
+        <div class="container">
+            <div id="closedRegistrationAlert" class="message error-message hidden"
+                style="margin-bottom: 20px; text-align: center; font-size: 1.2rem;">
+                ⚠️ LAS INSCRIPCIONES ESTÁN CERRADAS
+            </div>
+
+            <div class="header-bar">
+                <h2 id="teamTitle">Registro de Equipo</h2>
+                <button id="logoutBtn" class="btn btn-secondary">Salir</button>
+            </div>
+
+            <!-- Barra de Progreso -->
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                </div>
+                <p class="progress-text"><span id="progressPercent">0</span>% completado</p>
+            </div>
+
+            <!-- Resumen de Inscripción -->
+            <div id="statusSummary" class="card glass-card">
+                <h3>📊 Estado de la Inscripción</h3>
+                <div class="status-list">
+                    <div class="status-item" id="statusTeamName">
+                        <span class="status-icon">❌</span> Nombre del Equipo
+                    </div>
+                    <div class="status-item" id="statusTeamLogo">
+                        <span class="status-icon">❌</span> Logo del Equipo
+                    </div>
+                    <div class="status-item" id="statusTeamColor">
+                        <span class="status-icon">❌</span> Color Equipación
+                    </div>
+                    <div class="status-item" id="statusPlayers">
+                        <span class="status-icon">❌</span> Jugadores (0/10)
+                    </div>
+                    <div class="status-item" id="statusCompanions">
+                        <span class="status-icon">❌</span> Acompañantes (0/2)
+                    </div>
+                </div>
+            </div>
+
+            <div class="card glass-card">
+                <h3>📋 Datos del Equipo</h3>
+
+                <div class="form-group">
+                    <label for="teamName">Nombre del Equipo *</label>
+                    <input type="text" id="teamName" placeholder="Los Tigres" class="input-field" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="teamColor">Color de la Equipación *</label>
+                    <input type="text" id="teamColor" placeholder="Rojo y Blanco" class="input-field" required>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="teamLogo">Logo del Equipo (WebP) *</label>
+                    <input type="file" id="teamLogo" class="input-field" accept="image/webp">
+                    <div id="logoPreviewContainer" class="logo-preview-container hidden">
+                        <img id="logoPreview" src="" alt="Vista previa del logo" class="logo-preview">
+                        <button id="removeLogoBtn" class="btn btn-danger btn-sm" style="margin-top: 5px;">Eliminar
+                            Logo</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Jugadores -->
+            <div class="card glass-card">
+                <div class="section-header">
+                    <h3>👥 Jugadores (Máx. 10)</h3>
+                </div>
+                <div id="playersContainer" class="players-grid">
+                    <!-- Jugadores dinámicos -->
+                </div>
+                <button id="addPlayerBtn" class="btn btn-accent" style="margin-top: 15px; width: 100%;">+ Añadir
+                    Jugador</button>
+            </div>
+
+            <!-- Sección de Acompañantes -->
+            <div class="card glass-card">
+                <div class="section-header">
+                    <h3>🤝 Acompañantes (Máx. 2)</h3>
+                </div>
+                <div id="companionsContainer" class="players-grid">
+                    <!-- Acompañantes dinámicos -->
+                </div>
+                <button id="addCompanionBtn" class="btn btn-accent" style="margin-top: 15px; width: 100%;">+ Añadir
+                    Acompañante</button>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="action-buttons">
+                <button id="saveProgressBtn" class="btn btn-secondary">
+                    💾 Guardar Progreso
+                </button>
+                <button id="submitBtn" class="btn btn-primary">
+                    ✅ Finalizar Inscripción
+                </button>
+            </div>
+
+            <div id="formMessage" class="message hidden"></div>
+        </div>
+    </div>
+
+    <!-- Vista de Administrador (Dashboard) -->
+    <div id="adminView" class="view">
+        <div class="container">
+            <div class="header-bar">
+                <h2>📊 Dashboard Administrativo</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button id="downloadAllDataBtn" class="btn btn-accent">
+                        📥 Descargar Listado General
+                    </button>
+                    <button id="toggleRegistrationBtn" class="btn btn-primary">
+                        🔒 Cerrar Inscripciones
+                    </button>
+                    <button id="adminLogoutBtn" class="btn btn-secondary">Salir</button>
+                </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpi-grid">
+                <div class="kpi-card glass-card">
+                    <div class="kpi-icon">🏆</div>
+                    <div class="kpi-value" id="totalTeams">0</div>
+                    <div class="kpi-label">Equipos Registrados</div>
+                </div>
+
+                <div class="kpi-card glass-card">
+                    <div class="kpi-icon">👥</div>
+                    <div class="kpi-value" id="totalPlayers">0</div>
+                    <div class="kpi-label">Jugadores Inscritos</div>
+                </div>
+
+                <div class="kpi-card glass-card alert">
+                    <div class="kpi-icon">⚠️</div>
+                    <div class="kpi-value" id="totalAllergies">0</div>
+                    <div class="kpi-label">Alertas de Alergias</div>
+                </div>
+            </div>
+
+            <!-- Tabla de Equipos -->
+            <div class="card glass-card">
+                <h3>Lista de Equipos</h3>
+                <div class="table-container">
+                    <table id="teamsTable">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Código</th>
+                                <th>Categoría</th>
+                                <th>Jugadores</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teamsTableBody">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalle de Equipo -->
+    <div id="teamDetailModal" class="modal hidden">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modalTeamName" style="margin-bottom: 5px;">Detalle del Equipo</h3>
+                    <button id="downloadTeamDataBtn" class="btn btn-accent btn-sm">
+                        📥 Descargar Listado Equipo
+                    </button>
+                </div>
+                <button id="closeModal" class="btn-close">✕</button>
+            </div>
+            <div id="modalPlayersContent" class="modal-body">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Firma Digital -->
+    <!-- Modal de Firma Digital -->
+    <div id="signatureModal" class="modal hidden">
+        <div class="modal-content glass-card" style="max-width: 650px;">
+            <div class="modal-header">
+                <h3>📝 Autorización de Imagen y Datos</h3>
+                <button id="closeSignatureModal" class="btn-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <div
+                    style="max-height: 200px; overflow-y: auto; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; text-align: justify;">
+                    <p style="text-align: center; margin-bottom: 10px;"><strong>VIII TORNEO MECENAS
+                            FUNDACIÓN<br>INFORMACIÓN SOBRE PROTECCIÓN DE DATOS</strong></p>
+                    <p>De acuerdo con lo dispuesto en el Reglamento (UE) 2016/679, del Parlamento Europeo y del Consejo,
+                        de 27 de abril de 2016, relativo a las personas físicas en lo que respecta al tratamiento de
+                        datos personales y a la libre circulación de estos datos (RGPD); a la Ley Orgánica 3/2018, de 5
+                        de diciembre, de Protección de Datos Personales y garantía de los derechos digitales; y demás
+                        normativas españolas vigentes en materia de protección de datos, le informamos que sus datos
+                        personales serán incorporados al Sistema de Protección de Datos de la Fundación Real Madrid.</p>
+                    <p style="margin-top: 10px;"><strong>Identificación del Responsable de Tratamiento:</strong><br>
+                        - Identidad: FUNDACIÓN REAL MADRID<br>
+                        - Dirección: Avda. Concha Espina 1, 28036 Madrid (España)<br>
+                        - Teléfono: 91.453.29.00<br>
+                        - Correo electrónico: correo.fundacion@corp.realmadrid.com<br>
+                        - Delegado de Protección de Datos: Persevera, S.L.U. en la persona de Manuel del Palacio. Su
+                        contacto es mdp.dpo@perseveragrupo.com.</p>
+                    <p style="margin-top: 10px;"><strong>Finalidad del tratamiento:</strong><br>
+                        En Fundación Real Madrid tratamos los datos que nos facilita con la finalidad de gestionar su
+                        participación en el “Torneo Mecenas Fundación Real Madrid” organizado por la Fundación Real
+                        Madrid en la Ciudad Deportiva, incluyendo la gestión de acceso y su inclusión en el seguro.</p>
+                    <p>Asimismo, a continuación, podrá dar su consentimiento para el tratamiento de los datos que le
+                        identifican. Los datos serán conservados durante el tiempo que dure el consentimiento, o en su
+                        caso, el tiempo legal establecido para cada una de las obligaciones legales que deriven de los
+                        tratamientos para lo que se ha consentido.</p>
+                    <p style="margin-top: 10px;"><strong>Legitimación para el tratamiento de sus datos:</strong><br>
+                        La base legal para el tratamiento de sus datos es la conformidad en la participación de la
+                        actividad organizada por la Fundación Real Madrid. Los datos sólo podrán ser utilizados para los
+                        fines expuestos en el anterior epígrafe, de acuerdo con los principios de transparencia y de
+                        limitación de la finalidad.</p>
+                    <p style="margin-top: 10px;"><strong>Comunicación o cesión de datos:</strong><br>
+                        Los datos podrán ser cedidos a Willis Iberia Correduría de Seguros S.A. con el fin de poder
+                        incluirle en el seguro de la actividad. Asimismo, en caso de que sea necesario, se podrán ceder
+                        al Real Madrid C.F. con el fin de dar acceso a las instalaciones de la Ciudad Deportiva Real
+                        Madrid, así como a cualquier entidad externa necesaria para la correcta gestión y organización
+                        de la actividad organizada por la Fundación Real Madrid, sin realizarse otro uso distinto al
+                        expuesto; y siempre que sea legalmente necesario.</p>
+                </div>
+
+                <div
+                    style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="margin-bottom: 20px;">
+                        <p style="font-size: 0.9rem; margin-bottom: 8px;">
+                            <strong>Cláusula 1:</strong> FUNDACIÓN REAL MADRID podrá ofrecerle y remitirle incluido por
+                            medios electrónicos, información de eventos y actividades organizados por la misma,
+                            comunicaciones comerciales, envío de newsletter y revistas, así como de otros productos
+                            propios vinculados a la entidad.
+                        </p>
+                        <div>
+                            <label
+                                style="display: inline-flex; align-items: center; margin-right: 20px; cursor: pointer;">
+                                <input type="radio" name="clause1" value="SI" required> <span
+                                    style="margin-left: 5px; color: var(--accent);">SÍ</span>
+                            </label>
+                            <label style="display: inline-flex; align-items: center; cursor: pointer;">
+                                <input type="radio" name="clause1" value="NO" required> <span
+                                    style="margin-left: 5px; color: var(--text-secondary);">NO</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <p style="font-size: 0.9rem; margin-bottom: 8px;">
+                            <strong>Cláusula 2:</strong> Por otra parte la FUNDACIÓN REAL MADRID podrá captar y utilizar
+                            la imagen y/o voz, bien a través de grabaciones, entrevistas o bien a través de fotografías,
+                            con el fin de promocionar la actividad propia de la Fundación y/o realizar formación de
+                            entrenadores y/o beneficiarios, a través de su reproducción y posterior publicación en los
+                            distintos medios propios como página web, canal OTT, televisión, radio, internet, vídeos y
+                            presentaciones promociónales, revistas, folletos informativos, anuncios y carteles entre
+                            otros.
+                        </p>
+                        <div>
+                            <label
+                                style="display: inline-flex; align-items: center; margin-right: 20px; cursor: pointer;">
+                                <input type="radio" name="clause2" value="SI" required> <span
+                                    style="margin-left: 5px; color: var(--accent);">SÍ</span>
+                            </label>
+                            <label style="display: inline-flex; align-items: center; cursor: pointer;">
+                                <input type="radio" name="clause2" value="NO" required> <span
+                                    style="margin-left: 5px; color: var(--text-secondary);">NO</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p style="font-size: 0.9rem; margin-bottom: 8px;">
+                            <strong>Cláusula 3:</strong> Si Ud. consiente, la Fundación Real Madrid podrá ceder los
+                            datos personales relativos a la imagen y/o voz obtenidos durante la actividad la cual
+                            participa al resto de entidades participantes en el “VII Torneo Mecenas Fundación Real
+                            Madrid”, pudiendo publicarse en los distintos medios de dichas entidades con fines
+                            promocionales.
+                        </p>
+                        <div>
+                            <label
+                                style="display: inline-flex; align-items: center; margin-right: 20px; cursor: pointer;">
+                                <input type="radio" name="clause3" value="SI" required> <span
+                                    style="margin-left: 5px; color: var(--accent);">SÍ</span>
+                            </label>
+                            <label style="display: inline-flex; align-items: center; cursor: pointer;">
+                                <input type="radio" name="clause3" value="NO" required> <span
+                                    style="margin-left: 5px; color: var(--text-secondary);">NO</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 style="margin-bottom: 0.5rem;">Firma del Participante/Tutor:</h4>
+                <div class="canvas-container"
+                    style="border: 2px dashed var(--accent); border-radius: 8px; background: white; cursor: crosshair;">
+                    <canvas id="signatureCanvas" width="450" height="200"
+                        style="touch-action: none; width: 100%;"></canvas>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                    <button id="clearSignatureBtn" class="btn btn-secondary" style="flex: 1;">❌ Borrar</button>
+                    <button id="saveSignatureBtn" class="btn btn-primary" style="flex: 1;">💾 Aceptar y Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js?v=2"></script>
+</body>
+
+</html>
