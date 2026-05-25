@@ -5,74 +5,296 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reglamento - Torneo Mecenas</title>
   <style>
+    /* Reset & base */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
       --azul:  #083f89;
       --ocre:  #bc883d;
       --blanco: #ffffff;
       --gris-claro: #f5f5f5;
+      --texto: #1a1a1a;
+      --texto-secundario: #555555;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
     }
+
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
-      margin: 0; padding: 0;
-      background-color: var(--gris-claro);
+      color: var(--texto);
+      background: var(--blanco);
+      line-height: 1.6;
       display: flex;
       flex-direction: column;
-      align-items: center;
       min-height: 100vh;
     }
+
+    /* Header */
     header {
       background: var(--ocre);
       color: var(--blanco);
-      width: 100%;
-      padding: 1.5rem;
+      padding: 1.5rem 2rem;
       text-align: center;
-      box-sizing: border-box;
     }
+
     header h1 {
-      margin: 0;
       font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
     }
+
     header span {
       color: var(--azul);
     }
+
+    /* Franja decorativa */
     .franja {
-      width: 100%;
       height: 6px;
       background: linear-gradient(90deg, var(--ocre) 0%, var(--azul) 100%);
     }
-    .message-card {
+
+    /* Main Container */
+    main {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+      flex: 1;
+      width: 100%;
+    }
+
+    /* Hero Section (Rule 0) */
+    .hero-card {
+      background: linear-gradient(135deg, var(--azul) 0%, #0a4aa3 100%);
+      color: var(--blanco);
+      border-radius: 12px;
+      padding: 2rem 2.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 24px rgba(8, 63, 137, 0.15);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .hero-icon {
+      font-size: 3rem;
+      flex-shrink: 0;
+    }
+
+    .hero-content h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--blanco);
+    }
+
+    .hero-content p {
+      font-size: 1.1rem;
+      line-height: 1.5;
+      font-weight: 400;
+      opacity: 0.95;
+    }
+
+    /* Rules Grid */
+    .rules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .rule-card {
       background: var(--blanco);
-      margin-top: 4rem;
-      padding: 3rem;
-      border-radius: 8px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+      border: 1px solid #e0e0e0;
       border-top: 4px solid var(--azul);
-      max-width: 600px;
-      width: 90%;
-      text-align: center;
-      box-sizing: border-box;
+      border-radius: 10px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
     }
-    .message-card h2 {
-      color: var(--azul);
-      margin-top: 0;
-      margin-bottom: 1.5rem;
+
+    .rule-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(8, 63, 137, 0.08);
+      border-top-color: var(--ocre);
     }
-    .message-card p {
-      color: #333;
+
+    .rule-header {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .rule-icon {
+      font-size: 1.8rem;
+      background: rgba(8, 63, 137, 0.06);
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .rule-card:hover .rule-icon {
+      background: rgba(188, 136, 61, 0.1);
+    }
+
+    .rule-header h3 {
       font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--azul);
+    }
+
+    .rule-card p {
+      font-size: 0.95rem;
+      color: #333;
       line-height: 1.6;
+    }
+
+    /* Highlights / Stats inside rules */
+    .highlight-badge {
+      display: inline-block;
+      background: #fdfaf6;
+      border: 1px solid rgba(188, 136, 61, 0.3);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #7c5820;
+      margin-top: auto;
+    }
+
+    /* Navigation/Actions */
+    .actions {
+      text-align: center;
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.8rem;
+      background: var(--azul);
+      color: var(--blanco);
+      text-decoration: none;
+      font-weight: 600;
+      border-radius: 6px;
+      transition: var(--transition);
+    }
+
+    .btn-back:hover {
+      background: #0a52b3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(8, 63, 137, 0.2);
+    }
+
+    /* Footer */
+    footer {
+      background: var(--ocre);
+      color: var(--blanco);
+      text-align: center;
+      padding: 1.2rem;
+      font-size: 0.85rem;
+      margin-top: auto;
+    }
+
+    footer span {
+      color: var(--azul);
+      font-weight: 700;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 1.5rem;
+      }
+      .hero-icon {
+        font-size: 2.5rem;
+      }
+      main {
+        padding: 1.5rem 1rem;
+      }
     }
   </style>
 </head>
 <body>
+
   <header>
     <h1>Torneo <span>Mecenas</span> · Fundación Real Madrid</h1>
   </header>
+
   <div class="franja"></div>
 
-  <div class="message-card">
-    <h2>📜 Reglamento del Torneo</h2>
-    <p>Estamos en proceso de cerrar el reglamento. En las próximas semanas lo publicaremos en este mismo canal.</p>
-  </div>
+  <main>
+    <!-- Reglamento No Competitivo Banner (Regla 0) -->
+    <div class="hero-card">
+      <div class="hero-icon">🤝</div>
+      <div class="hero-content">
+        <h2>Lo más importante: Convivencia y Solidaridad</h2>
+        <p>Este es un torneo <strong>no competitivo</strong>. No habrá un ganador final ni clasificaciones oficiales. El verdadero trofeo es disfrutar de una gran jornada deportiva, fomentar la convivencia y colaborar con una causa social única.</p>
+      </div>
+    </div>
+
+    <!-- Grid of Rules -->
+    <div class="rules-grid">
+      <!-- Rule 1 & 2: Normas y Duración -->
+      <div class="rule-card">
+        <div class="rule-header">
+          <div class="rule-icon">⚽</div>
+          <h3>Normativa de Juego</h3>
+        </div>
+        <p>Los encuentros se disputarán siguiendo el reglamento oficial de la modalidad de <strong>Fútbol 8</strong>.</p>
+        <p>Los partidos se jugarán <strong>sin árbitros</strong>, siguiendo el modelo educativo de la Fundación Real Madrid para fomentar el juego limpio, el compañerismo y la autorregulación por parte de los jugadores.</p>
+        <p>Cada partido tendrá una duración de <strong>12 minutos</strong> sin interrupciones, permitiendo un ritmo dinámico.</p>
+        <span class="highlight-badge">⏱️ Duración: 12 min</span>
+      </div>
+
+      <!-- Rule 3: Formato y Cruces -->
+      <div class="rule-card">
+        <div class="rule-header">
+          <div class="rule-icon">🔄</div>
+          <h3>Formato y Cruces</h3>
+        </div>
+        <p>Todos los equipos jugarán un mínimo de <strong>4 partidos</strong> en su campo asignado.</p>
+        <p>Tras la primera fase, se jugará un partido de cruce final contra el equipo que haya quedado en tu misma posición en el campo contiguo. El único objetivo es emparejar equipos de nivel similar para que todos disfruten.</p>
+        <span class="highlight-badge">⚔️ Fase final equilibrada</span>
+      </div>
+
+      <!-- Rule 4: Integración FRM -->
+      <div class="rule-card">
+        <div class="rule-header">
+          <div class="rule-icon">🌟</div>
+          <h3>Inclusión Social</h3>
+        </div>
+        <p>Este año integramos a <strong>beneficiarios de las escuelas adaptadas</strong> de la Fundación Real Madrid en cada equipo.</p>
+        <p>Tu equipo estará compuesto por <strong>10 jugadores corporativos</strong> de la empresa y <strong>1 beneficiario</strong> de los proyectos adaptados de la FRM. Podréis compartir campo y conocer de primera mano a quién apoya vuestra ayuda.</p>
+        <span class="highlight-badge">👥 10 + 1 Integrantes</span>
+      </div>
+    </div>
+
+    <!-- Actions / Back Button -->
+    <div class="actions">
+      <a href="index.html" class="btn-back">
+        ⬅️ Volver a la Página Principal
+      </a>
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2026 <span>Fundación Real Madrid</span> · Todos los derechos reservados
+  </footer>
+
 </body>
 </html>
